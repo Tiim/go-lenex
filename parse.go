@@ -142,6 +142,30 @@ func normalizeMeet(rm *rawxml.Meet, meetID string, doc *Document) (*Meet, *meetI
 			idx.eventsByID[evt.EventID] = evt
 			idx.dateByEventID[evt.EventID] = sess.Date
 
+			// Normalize age groups and their rankings (rankings resolve lazily via resultsByID).
+			for k := range re.AgeGroups {
+				rag := &re.AgeGroups[k]
+				ag := &AgeGroup{
+					doc:        doc,
+					meetID:     meetID,
+					AgeGroupID: rag.AgeGroupID,
+					AgeMin:     rag.AgeMin,
+					AgeMax:     rag.AgeMax,
+					Gender:     Gender(rag.Gender),
+					Name:       rag.Name,
+				}
+				for _, rr := range rag.Rankings {
+					ag.Rankings = append(ag.Rankings, Ranking{
+						doc:      doc,
+						meetID:   meetID,
+						Place:    rr.Place,
+						ResultID: rr.ResultID,
+						Medal:    rr.Medal,
+					})
+				}
+				evt.AgeGroups = append(evt.AgeGroups, ag)
+			}
+
 			for k := range re.Heats {
 				rh := &re.Heats[k]
 				heat := &Heat{

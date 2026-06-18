@@ -168,6 +168,30 @@ func TestParseIntegration(t *testing.T) {
 		t.Errorf("ByAthlete(A1) = %d results, want 1", len(byAthlete))
 	}
 
+	// Ranking → Result lazy resolution
+	evt := idx.eventsByID["1"]
+	if evt == nil {
+		t.Fatal("event 1 not in index")
+	}
+	if len(evt.AgeGroups) != 1 {
+		t.Fatalf("event.AgeGroups = %d, want 1", len(evt.AgeGroups))
+	}
+	ag := evt.AgeGroups[0]
+	if len(ag.Rankings) != 1 {
+		t.Fatalf("agegroup.Rankings = %d, want 1", len(ag.Rankings))
+	}
+	rank := ag.Rankings[0]
+	if rank.Place != 1 {
+		t.Errorf("rank.Place = %d", rank.Place)
+	}
+	resolvedResult := rank.Result()
+	if resolvedResult == nil {
+		t.Fatal("rank.Result() = nil")
+	}
+	if resolvedResult.ResultID != "101" {
+		t.Errorf("rank.Result().ResultID = %q", resolvedResult.ResultID)
+	}
+
 	// Official
 	off := idx.officialsByID["O1"]
 	if off == nil {

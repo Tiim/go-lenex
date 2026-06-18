@@ -265,12 +265,13 @@ type Event struct {
 	doc    *Document
 	meetID string
 
-	EventID string
-	Number  int
-	Gender  Gender
-	Round   string
-	Status  string
-	Key     EventKey
+	EventID   string
+	Number    int
+	Gender    Gender
+	Round     string
+	Status    string
+	Key       EventKey
+	AgeGroups []*AgeGroup
 }
 
 // Session is one session of a meet.
