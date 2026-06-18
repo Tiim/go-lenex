@@ -36,10 +36,7 @@ Tracks status of implementing `docs/plan.md`. Updated as work proceeds.
 
 ## Remaining work / known gaps
 
-- Session-level Pool is parsed but not yet attached to Session in the domain model pool resolution.
-- `Meet.AgeGroups` is declared but never populated (events own their age groups).
 - Relay entries and results are indexed under `entriesByAthleteID["relay:<id>"]` as
   a stopgap; a proper `entriesByRelayID` index may be cleaner.
-- Time-standard list AGEGROUP not yet normalized into a domain AgeGroup.
 - No federation-specific extensions (GER/SUI) handled — treated as unknown values.
 - Full validation / Warning population deferred until real malformed files surface.

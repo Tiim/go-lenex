@@ -53,7 +53,7 @@ func normalize(raw *rawxml.LENEX) (*Document, []Warning) {
 	}
 
 	for i := range raw.TimeStandardLists {
-		tsl := normalizeTimeStandardList(&raw.TimeStandardLists[i])
+		tsl := normalizeTimeStandardList(&raw.TimeStandardLists[i], doc)
 		doc.TimeStandardLists = append(doc.TimeStandardLists, tsl)
 	}
 
@@ -112,6 +112,11 @@ func normalizeMeet(rm *rawxml.Meet, meetID string, doc *Document) (*Meet, *meetI
 		Status: rm.Status,
 		Type:   rm.Type,
 	}
+	if rm.Pool != nil {
+		meet.Pool = normalizePool(rm.Pool)
+	}
+
+	seenAgeGroupIDs := make(map[string]bool)
 
 	// Resolve session course: sessions inherit meet course if not overridden.
 	for i := range rm.Sessions {
@@ -130,8 +135,11 @@ func normalizeMeet(rm *rawxml.Meet, meetID string, doc *Document) (*Meet, *meetI
 			Name:   rs.Name,
 			Status: rs.Status,
 		}
+		// Session pool falls back to meet-level pool if not specified.
 		if rs.Pool != nil {
 			sess.Pool = normalizePool(rs.Pool)
+		} else {
+			sess.Pool = meet.Pool
 		}
 		meet.Sessions = append(meet.Sessions, sess)
 
@@ -164,6 +172,12 @@ func normalizeMeet(rm *rawxml.Meet, meetID string, doc *Document) (*Meet, *meetI
 					})
 				}
 				evt.AgeGroups = append(evt.AgeGroups, ag)
+
+				// Aggregate into meet-level AgeGroups (deduplicated by AgeGroupID).
+				if !seenAgeGroupIDs[ag.AgeGroupID] {
+					seenAgeGroupIDs[ag.AgeGroupID] = true
+					meet.AgeGroups = append(meet.AgeGroups, ag)
+				}
 			}
 
 			for k := range re.Heats {
@@ -523,13 +537,16 @@ func normalizeAgeGroup(ra *rawxml.AgeGroup, meetID string, doc *Document) *AgeGr
 	return ag
 }
 
-func normalizeTimeStandardList(tsl *rawxml.TimeStandardList) *TimeStandardList {
+func normalizeTimeStandardList(tsl *rawxml.TimeStandardList, doc *Document) *TimeStandardList {
 	out := &TimeStandardList{
 		TimeStandardListID: tsl.TimeStandardListID,
 		Name:               tsl.Name,
 		Gender:             Gender(tsl.Gender),
 		Course:             Course(tsl.Course),
 		Type:               tsl.Type,
+	}
+	if tsl.AgeGroup != nil {
+		out.AgeGroup = normalizeAgeGroup(tsl.AgeGroup, "", doc)
 	}
 	for i := range tsl.TimeStandards {
 		rts := &tsl.TimeStandards[i]

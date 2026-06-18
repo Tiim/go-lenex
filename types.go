@@ -460,6 +460,7 @@ type Meet struct {
 	Course  Course
 	Status  string
 	Type    string
+	Pool    *Pool
 
 	Sessions           []*Session
 	Clubs              []*Club
