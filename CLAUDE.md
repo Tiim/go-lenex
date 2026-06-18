@@ -24,6 +24,11 @@ go test ./internal/rawxml/...
 
 No build step required — this is a library.
 
+## Commit guidelines
+
+- Use semantic commit messages: `type: short description` (e.g. `feat:`, `fix:`, `ci:`, `docs:`, `refactor:`, `test:`)
+- Do not add a `Co-Authored-By` trailer
+
 ## Architecture
 
 The library has two layers:
