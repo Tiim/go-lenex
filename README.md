@@ -110,6 +110,7 @@ doc.Entries()  // ResultSet — all SourceEntry performances across all meets
 ```go
 rs.All()                  // []*Performance
 rs.ByClub("SCB")          // filter by club code
+rs.ByClubID("65651")      // filter by club ID (clubs may have no code)
 rs.ByAthlete("12345")     // filter by athlete ID
 ```
 
@@ -121,7 +122,13 @@ for _, meet := range doc.Meets {
 
     for _, session := range meet.Sessions {
         fmt.Println(session.Date, session.Course)
+        if start, ok := session.Start(); ok { // date + daytime
+            end, _ := session.End()            // date + endtime
+            fmt.Println(start, end)
+        }
     }
+
+    meet.Results().ByClubID("65651") // results of one meet and club
 
     for _, club := range meet.Clubs {
         fmt.Println(club.Code, club.Name)

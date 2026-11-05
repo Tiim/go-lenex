@@ -335,3 +335,56 @@ func TestResults_ByAthleteID(t *testing.T) {
 		t.Errorf("ByAthlete(%s) = %d, want 10", athID, len(byAth))
 	}
 }
+
+func TestInvitation_SessionTimes(t *testing.T) {
+	doc := openFixture(t, "2026-IBC-invitation.lxf")
+	m := doc.Meets[0]
+	if m.HostClub != "Basel Aquatics" || m.NameEn != "International Basel Cup 2026" {
+		t.Errorf("meet HostClub = %q, NameEn = %q", m.HostClub, m.NameEn)
+	}
+	s := m.Sessions[1]
+	if s.DayTime == nil || *s.DayTime != (lenex.Daytime{Hour: 17}) {
+		t.Fatalf("session 2 DayTime = %v", s.DayTime)
+	}
+	start, ok := s.Start()
+	if !ok || !start.Equal(time.Date(2026, 5, 29, 17, 0, 0, 0, time.UTC)) {
+		t.Errorf("session 2 Start = %v, %v", start, ok)
+	}
+	end, ok := s.End()
+	if !ok || !end.Equal(time.Date(2026, 5, 29, 19, 30, 0, 0, time.UTC)) {
+		t.Errorf("session 2 End = %v, %v", end, ok)
+	}
+}
+
+func TestResults_MeetResultsByClubID(t *testing.T) {
+	doc := openFixture(t, "2026-IBC-results.lxf")
+	m := doc.Meets[0]
+	if got, want := len(m.Results().All()), len(doc.Results().All()); got != want {
+		t.Errorf("meet results = %d, want %d", got, want)
+	}
+	// Schwimmclub Aquarius Triesen has no club code, only an ID.
+	rs := m.Results().ByClubID("65651")
+	if len(rs) == 0 {
+		t.Fatal("no results for club 65651")
+	}
+	for _, p := range rs {
+		if c := p.Club(); c == nil || c.Name != "Schwimmclub Aquarius Triesen" {
+			t.Fatalf("result club = %+v", c)
+		}
+	}
+}
+
+func TestSessionEndAfterMidnight(t *testing.T) {
+	s := lenex.Session{
+		Date:    time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC),
+		DayTime: &lenex.Daytime{Hour: 20},
+		EndTime: &lenex.Daytime{Hour: 1, Minute: 15},
+	}
+	end, ok := s.End()
+	if !ok || !end.Equal(time.Date(2026, 1, 2, 1, 15, 0, 0, time.UTC)) {
+		t.Errorf("End = %v, %v", end, ok)
+	}
+	if _, ok := (&lenex.Session{}).Start(); ok {
+		t.Error("Start without daytime reported ok")
+	}
+}

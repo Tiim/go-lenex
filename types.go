@@ -103,6 +103,19 @@ func (s SwimTime) String() string {
 	return fmt.Sprintf("%d:%02d.%02d", mm, ss, cs)
 }
 
+// Daytime is a time of day (local time of the meet), e.g. a session start.
+type Daytime struct {
+	Hour   int
+	Minute int
+}
+
+// Duration is the time since midnight.
+func (d Daytime) Duration() time.Duration {
+	return time.Duration(d.Hour)*time.Hour + time.Duration(d.Minute)*time.Minute
+}
+
+func (d Daytime) String() string { return fmt.Sprintf("%02d:%02d", d.Hour, d.Minute) }
+
 // ReactionTime represents a reaction time in hundredths of a second.
 // A nil *ReactionTime means the reaction time was not recorded.
 type ReactionTime struct {
@@ -285,6 +298,34 @@ type Session struct {
 	Name   string
 	Status string
 	Pool   *Pool
+
+	// Times of day; nil when not given in the file.
+	DayTime     *Daytime // start of the session
+	EndTime     *Daytime // estimated end of the session
+	WarmupFrom  *Daytime
+	WarmupUntil *Daytime
+}
+
+// Start is the start of the session (date and daytime), or ok=false when the
+// file gives no start time.
+func (s *Session) Start() (time.Time, bool) {
+	if s.DayTime == nil {
+		return time.Time{}, false
+	}
+	return s.Date.Add(s.DayTime.Duration()), true
+}
+
+// End is the estimated end of the session, or ok=false when the file gives
+// no end time. An end time before the start is taken as the next day.
+func (s *Session) End() (time.Time, bool) {
+	if s.EndTime == nil {
+		return time.Time{}, false
+	}
+	end := s.Date.Add(s.EndTime.Duration())
+	if start, ok := s.Start(); ok && end.Before(start) {
+		end = end.AddDate(0, 0, 1)
+	}
+	return end, true
 }
 
 // Pool describes a swimming pool.
@@ -453,9 +494,13 @@ type TimeStandardList struct {
 type Meet struct {
 	doc *Document
 
-	MeetID  string // internal id (index into doc.Meets)
-	Name    string
-	City    string
+	MeetID    string // internal id (index into doc.Meets)
+	Name      string
+	NameEn    string
+	City      string
+	CityEn    string
+	HostClub  string
+	Organizer string
 	Nation  string
 	Course  Course
 	Status  string
@@ -466,4 +511,18 @@ type Meet struct {
 	Clubs              []*Club
 	Officials          []*Official
 	AgeGroups          []*AgeGroup
+}
+
+// Results returns the performances of type SourceResult of this meet.
+func (m *Meet) Results() ResultSet {
+	var rs ResultSet
+	if m.doc == nil {
+		return rs
+	}
+	if idx := m.doc.meetsByID[m.MeetID]; idx != nil {
+		for _, p := range idx.resultsByID {
+			rs.all = append(rs.all, p)
+		}
+	}
+	return rs
 }

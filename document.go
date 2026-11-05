@@ -88,6 +88,18 @@ func (rs ResultSet) ByClub(code string) []*Performance {
 	return out
 }
 
+// ByClubID filters performances to those belonging to the given club ID
+// (Club.ClubID). Unlike the club code, every club has an ID.
+func (rs ResultSet) ByClubID(clubID string) []*Performance {
+	var out []*Performance
+	for _, p := range rs.all {
+		if p.ClubID == clubID {
+			out = append(out, p)
+		}
+	}
+	return out
+}
+
 // ByAthlete filters performances to those for the given athlete ID.
 func (rs ResultSet) ByAthlete(athleteID string) []*Performance {
 	var out []*Performance
