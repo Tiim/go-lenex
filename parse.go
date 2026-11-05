@@ -108,6 +108,11 @@ func normalizeMeet(rm *rawxml.Meet, meetID string, doc *Document) (*Meet, *meetI
 		Name:   rm.Name,
 		City:   rm.City,
 		Nation: rm.Nation,
+
+		NameEn:    rm.NameEn,
+		CityEn:    rm.CityEn,
+		HostClub:  rm.HostClub,
+		Organizer: rm.Organizer,
 		Course: Course(rm.Course),
 		Status: rm.Status,
 		Type:   rm.Type,
@@ -134,6 +139,11 @@ func normalizeMeet(rm *rawxml.Meet, meetID string, doc *Document) (*Meet, *meetI
 			Course: sessionCourse,
 			Name:   rs.Name,
 			Status: rs.Status,
+
+			DayTime:     normalizeDaytime(rs.DayTime),
+			EndTime:     normalizeDaytime(rs.EndTime),
+			WarmupFrom:  normalizeDaytime(rs.WarmupFrom),
+			WarmupUntil: normalizeDaytime(rs.WarmupUntil),
 		}
 		// Session pool falls back to meet-level pool if not specified.
 		if rs.Pool != nil {
@@ -325,6 +335,13 @@ func normalizeMeet(rm *rawxml.Meet, meetID string, doc *Document) (*Meet, *meetI
 	}
 
 	return meet, idx
+}
+
+func normalizeDaytime(d *rawxml.Daytime) *Daytime {
+	if d == nil {
+		return nil
+	}
+	return &Daytime{Hour: d.Hour, Minute: d.Minute}
 }
 
 func normalizePool(rp *rawxml.Pool) *Pool {
