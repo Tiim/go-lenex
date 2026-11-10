@@ -220,3 +220,66 @@ func TestParseZip(t *testing.T) {
 		t.Errorf("zip: len(Meets) = %d", len(doc.Meets))
 	}
 }
+
+// Clubs without clubid fall back to their code only when it is unique in the
+// meet; clubs sharing a placeholder code like "0" must not be merged.
+func TestClubIDFallback(t *testing.T) {
+	club := func(attrs, athleteID string) string {
+		return `<CLUB ` + attrs + `><ATHLETES>
+            <ATHLETE athleteid="` + athleteID + `" firstname="F` + athleteID + `" lastname="L" gender="M">
+              <RESULTS><RESULT resultid="R` + athleteID + `" eventid="1" swimtime="00:01:00.00"/></RESULTS>
+            </ATHLETE></ATHLETES></CLUB>`
+	}
+	src := `<?xml version="1.0" encoding="UTF-8"?>
+<LENEX version="3.0"><MEETS><MEET name="M" course="SCM">
+  <SESSIONS><SESSION number="1" date="2024-06-01"><EVENTS>
+    <EVENT eventid="1" number="1"><SWIMSTYLE distance="100" stroke="FREE" relaycount="1"/></EVENT>
+  </EVENTS></SESSION></SESSIONS>
+  <CLUBS>` +
+		club(`name="Unique" code="4788"`, "1") +
+		club(`name="Zero A" code="0"`, "2") +
+		club(`name="Zero B" code="0"`, "3") +
+		club(`name="No Code"`, "4") +
+		club(`name="Explicit" clubid="club-1"`, "5") +
+		club(`name="Code Taken" code="X"`, "6") +
+		club(`name="Explicit X" clubid="X"`, "7") + `
+  </CLUBS>
+</MEET></MEETS></LENEX>`
+
+	doc, _, err := Parse(strings.NewReader(src))
+	if err != nil {
+		t.Fatal(err)
+	}
+	m := doc.Meets[0]
+	want := map[string]string{
+		"Unique":     "4788",
+		"Zero A":     "club-1-2",
+		"Zero B":     "club-2",
+		"No Code":    "club-3",
+		"Explicit":   "club-1",
+		"Code Taken": "club-5",
+		"Explicit X": "X",
+	}
+	seen := map[string]bool{}
+	for _, c := range m.Clubs {
+		if got := c.ClubID; got != want[c.Name] {
+			t.Errorf("%s: ClubID = %q, want %q", c.Name, got, want[c.Name])
+		}
+		if seen[c.ClubID] {
+			t.Errorf("duplicate ClubID %q", c.ClubID)
+		}
+		seen[c.ClubID] = true
+
+		rs := m.Results().ByClubID(c.ClubID)
+		if len(rs) != 1 {
+			t.Errorf("%s: %d results, want 1", c.Name, len(rs))
+			continue
+		}
+		if got := rs[0].Club(); got == nil || got.Name != c.Name {
+			t.Errorf("%s: result club = %+v", c.Name, got)
+		}
+		if a := rs[0].Athlete(); a == nil || a.Club() == nil || a.Club().Name != c.Name {
+			t.Errorf("%s: athlete club mismatch", c.Name)
+		}
+	}
+}

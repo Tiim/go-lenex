@@ -223,12 +223,10 @@ func normalizeMeet(rm *rawxml.Meet, meetID string, doc *Document) (*Meet, *meetI
 	}
 
 	// Process clubs, athletes, officials, relays.
+	clubIDs := meetClubIDs(rm.Clubs)
 	for i := range rm.Clubs {
 		rc := &rm.Clubs[i]
-		clubID := rc.ClubID
-		if clubID == "" {
-			clubID = rc.Code
-		}
+		clubID := clubIDs[i]
 		club := &Club{
 			doc:       doc,
 			meetID:    meetID,
@@ -580,4 +578,40 @@ func normalizeTimeStandardList(tsl *rawxml.TimeStandardList, doc *Document) *Tim
 		out.Standards = append(out.Standards, ts)
 	}
 	return out
+}
+
+// meetClubIDs picks a meet-unique ID for each club. CLUB.clubid is optional
+// in results files, so a club without one falls back to its code, but only
+// when no other club of the meet has the same code or ID: many files give
+// clubs without a national registration the placeholder code "0". Clubs
+// with neither get a generated ID, "club-<index>".
+func meetClubIDs(clubs []rawxml.Club) []string {
+	taken := map[string]bool{}
+	codes := map[string]int{}
+	for i := range clubs {
+		if clubs[i].ClubID != "" {
+			taken[clubs[i].ClubID] = true
+		} else if clubs[i].Code != "" {
+			codes[clubs[i].Code]++
+		}
+	}
+	ids := make([]string, len(clubs))
+	for i := range clubs {
+		c := &clubs[i]
+		switch {
+		case c.ClubID != "":
+			ids[i] = c.ClubID
+			continue
+		case c.Code != "" && codes[c.Code] == 1 && !taken[c.Code]:
+			ids[i] = c.Code
+		default:
+			id := fmt.Sprintf("club-%d", i)
+			for n := 2; taken[id]; n++ {
+				id = fmt.Sprintf("club-%d-%d", i, n)
+			}
+			ids[i] = id
+		}
+		taken[ids[i]] = true
+	}
+	return ids
 }

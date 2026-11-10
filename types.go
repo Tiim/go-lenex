@@ -177,6 +177,8 @@ type Club struct {
 	doc    *Document
 	meetID string
 
+	// ClubID is unique within the meet: CLUB.clubid, else the club code if
+	// no other club of the meet shares it, else a generated "club-<index>".
 	ClubID    string
 	Code      string
 	Name      string
